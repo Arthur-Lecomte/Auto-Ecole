@@ -11,8 +11,15 @@ publiable. Il arrive via le template `demo-template` ; adapte la section
   son portfolio [arthurlecomte.fr](https://arthurlecomte.fr), sous
   `/demos/<slug>/`. Ce repo reste la source de vérité du code ; le
   portfolio n'en héberge qu'une copie du build.
-- TODO(arthur) : décrire ici en 2-3 lignes ce que fait le projet et où il
-  en est.
+- **Auto-École** (slug `auto-ecole`) : de petites voitures apprennent à
+  boucler des circuits 2D par neuroévolution (capteurs de distance → petit
+  réseau de neurones → algorithme génétique). Le visiteur voit l'IA
+  s'améliorer promotion après promotion, règle vitesse/population/mutation,
+  choisit parmi 3 circuits prédéfinis ou dessine le sien à main levée
+  (sauvé en localStorage), et peut charger un « champion » pré-entraîné
+  embarqué. Panneau pédagogique : capteurs visibles, réseau animé, courbe
+  de progression. Ton de l'interface : métaphore auto-école (élèves,
+  promotions, permis) avec sous-titres techniques. Style sombre techy.
 
 ## Règles non négociables
 
