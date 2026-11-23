@@ -69,8 +69,41 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
     return d;
   }
 
+  // A freehand stroke rarely meets its own start tangentially: the hand
+  // overshoots or hooks inward. Cut the tail at the point of the final
+  // stretch that comes closest to the start, so the closing seam is as
+  // short and straight as possible.
+  function trimTail(pts) {
+    const head = pts[0];
+    const from = Math.floor(pts.length * 0.6);
+    let bestI = pts.length - 1;
+    let bestD = Infinity;
+    for (let i = from; i < pts.length; i++) {
+      const d = Math.hypot(pts[i].x - head.x, pts[i].y - head.y);
+      if (d < bestD) {
+        bestD = d;
+        bestI = i;
+      }
+    }
+    return pts.slice(0, bestI + 1);
+  }
+
+  // One local smoothing pass: pull the samples around `center` toward
+  // their neighbours' midpoint. Circular indices; mutates `pts`.
+  function relaxWindow(pts, center, half) {
+    const n = pts.length;
+    const src = pts.map((p) => ({ x: p.x, y: p.y }));
+    for (let k = -half; k <= half; k++) {
+      const i = (((center + k) % n) + n) % n;
+      const a = src[(i - 1 + n) % n];
+      const b = src[i];
+      const c = src[(i + 1) % n];
+      pts[i] = { x: b.x * 0.4 + (a.x + c.x) * 0.3, y: b.y * 0.4 + (a.y + c.y) * 0.3 };
+    }
+  }
+
   function finishStroke() {
-    const pts = draft.points;
+    const pts = trimTail(draft.points);
     const perimeter = perimeterOf(pts);
     if (pts.length < 12 || perimeter < MIN_PERIMETER) {
       onStatus('Tracé trop court : dessinez une grande boucle d’un seul geste.');
@@ -89,22 +122,45 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
       return;
     }
 
-    // Smooth the hand tremor, then make the loop even. Coordinates are
-    // rounded BEFORE validation: the stored track must pass the exact same
-    // check when reloaded from localStorage.
-    const samples = resampleClosed(chaikinClosed(pts, 2), SAMPLE_SPACING).map((p) => ({
-      x: Math.round(p.x),
-      y: Math.round(p.y),
-    }));
-    const v = validateCenterline(samples, SAMPLE_SPACING, CUSTOM_WIDTH);
-    draft.points = samples;
+    // Smooth the hand tremor, make the loop even, then REINTERPRET rather
+    // than reject: while a curve is too tight for the road width (the
+    // closing seam, a sharp corner, a hand wobble…), relax the samples
+    // around it and try again. The working check uses a 10% width margin so
+    // a corner, once fixed, cannot drift back under the real threshold when
+    // resampling shifts the points. Validation always runs on rounded
+    // coordinates — the stored track must pass the exact same check when
+    // reloaded from localStorage.
+    const MARGIN = 1.1;
+    let samples = resampleClosed(chaikinClosed(pts, 2), SAMPLE_SPACING);
+    let rounded = null;
+    let v = null;
+    for (let round = 0; round < 200; round++) {
+      rounded = samples.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }));
+      const vm = validateCenterline(rounded, SAMPLE_SPACING, CUSTOM_WIDTH * MARGIN);
+      if (vm.ok || vm.reason !== 'curve') {
+        // Done smoothing (or a pinch, which smoothing cannot fix): the
+        // verdict that counts is the one at the real road width.
+        v = validateCenterline(rounded, SAMPLE_SPACING, CUSTOM_WIDTH);
+        break;
+      }
+      v = vm;
+      for (let pass = 0; pass < 3; pass++) relaxWindow(samples, vm.index, 8);
+      samples = resampleClosed(samples, SAMPLE_SPACING);
+    }
+    if (v && !v.ok) {
+      // Rounds exhausted mid-smoothing: give the real width a last word.
+      const vs = validateCenterline(rounded, SAMPLE_SPACING, CUSTOM_WIDTH);
+      if (vs.ok) v = vs;
+    }
+
+    draft.points = rounded;
     draft.closed = true;
     if (!v.ok) {
       draft.badIndex = v.index;
       draft.valid = false;
       onStatus(
         v.reason === 'curve'
-          ? 'Virage trop serré pour la largeur de la route (point rouge). Redessinez.'
+          ? 'Virage impossible à adoucir pour la largeur de la route (point rouge). Redessinez.'
           : 'La piste se pince au point rouge : espacez les portions. Redessinez.',
       );
     } else {
