@@ -8,7 +8,7 @@ import { evolve } from './ga.js';
 
 export const SIM = {
   dt: 1 / 60,
-  genTime: 30, // s, hard cap per generation
+  genTime: 20, // s, hard cap per generation
   stallWindow: 3, // s
   stallMinProgress: 18, // px of forward progress required per window
   rayAngles: [-1.2, -0.6, 0, 0.6, 1.2],
@@ -18,16 +18,23 @@ export const SIM = {
 
 export const DEFAULTS = { popSize: 60, sigma: 0.18 };
 
-// Shared per-car step: sense -> think -> drive -> collide -> progress.
-// Used by both the training population and the champion replay.
-export function stepCarWithBrain(track, car, genome, dt, inputsOut) {
-  const inputs = inputsOut || new Array(SIM.layers[0]);
+// What the car perceives: normalized sensor distances + normalized speed.
+// Also used by the UI to feed the live network visualization.
+export function senseInputs(track, car, out = new Array(SIM.layers[0])) {
   for (let r = 0; r < SIM.rayAngles.length; r++) {
     const d = track.raycast(car.x, car.y, car.heading + SIM.rayAngles[r], SIM.rayLen);
-    inputs[r] = d / SIM.rayLen;
+    out[r] = d / SIM.rayLen;
   }
-  inputs[SIM.rayAngles.length] = car.speed / CAR.maxSpeed;
+  out[SIM.rayAngles.length] = car.speed / CAR.maxSpeed;
+  return out;
+}
 
+const scratchInputs = new Array(SIM.layers[0]);
+
+// Shared per-car step: sense -> think -> drive -> collide -> progress.
+// Used by both the training population and the champion replay.
+export function stepCarWithBrain(track, car, genome, dt) {
+  const inputs = senseInputs(track, car, scratchInputs);
   const out = forward(SIM.layers, genome, inputs);
   driveCar(car, out[0], out[1], dt);
 
