@@ -13,10 +13,6 @@ export function makeRng(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
 
-  function range(min, max) {
-    return min + next() * (max - min);
-  }
-
   function int(maxExclusive) {
     return Math.floor(next() * maxExclusive);
   }
@@ -36,5 +32,5 @@ export function makeRng(seed) {
     return mag * Math.cos(2 * Math.PI * v);
   }
 
-  return { next, range, int, gaussian };
+  return { next, int, gaussian };
 }

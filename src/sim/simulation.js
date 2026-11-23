@@ -3,7 +3,7 @@
 // headless in Node.
 
 import { CAR, createCar, driveCar } from './car.js';
-import { forward, outputBiasIndex, randomGenome, weightCount } from './nn.js';
+import { forward, outputBiasIndex, randomGenome } from './nn.js';
 import { evolve } from './ga.js';
 
 export const SIM = {
@@ -153,8 +153,4 @@ export class Simulation {
     this.generation++;
     this.spawn();
   }
-}
-
-export function genomeLength() {
-  return weightCount(SIM.layers);
 }

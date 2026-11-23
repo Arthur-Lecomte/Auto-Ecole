@@ -10,10 +10,13 @@
   --accent: #52d6fb;
   --accent-dim: #2a7c96;
   --gold: #ffd166;
-  --champion: #ff6ec7;
-  --danger: #ff7b72;
-  --ok: #4cd97b;
   --radius: 10px;
+}
+
+/* Author styles on elements like .overlay would otherwise beat the UA's
+   non-!important [hidden] rule. */
+[hidden] {
+  display: none !important;
 }
 
 * {
@@ -53,7 +56,9 @@ h1 {
 }
 
 h1::after {
-  content: ' 🚗';
+  /* Decorative: the empty alternative text keeps it out of the h1's
+     accessible name. */
+  content: ' 🚗' / '';
 }
 
 .tagline {
@@ -116,6 +121,12 @@ h2 {
 .overlay p {
   margin: 0;
   max-width: 46ch;
+}
+
+.status-pill:empty {
+  /* Stays in the accessibility tree (role=status) so the first message is
+     reliably announced; only the empty chrome is hidden. */
+  visibility: hidden;
 }
 
 .status-pill {
@@ -338,6 +349,13 @@ button[disabled] {
   background: #12222c;
 }
 
+/* Non-color cue for the selected track (WCAG 1.4.1). */
+.track-item[data-current='true'] > button.select > span:first-child::before {
+  content: '✓ ' / '';
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .track-item > button.delete {
   padding: 0.45rem 0.6rem;
 }
@@ -394,11 +412,5 @@ footer a {
 @media (max-width: 920px) {
   .layout {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    scroll-behavior: auto;
   }
 }

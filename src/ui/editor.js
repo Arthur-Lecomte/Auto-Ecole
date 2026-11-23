@@ -19,7 +19,7 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
     valid: false,
   };
   let drawing = false;
-  let active = false;
+  let activePointer = -1; // a second finger must not corrupt the stroke
 
   function reset() {
     draft.points = [];
@@ -30,7 +30,7 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
   }
 
   function onPointerDown(e) {
-    if (!e.isPrimary) return;
+    if (!e.isPrimary || drawing) return;
     e.preventDefault();
     try {
       canvas.setPointerCapture(e.pointerId);
@@ -39,13 +39,14 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
     }
     reset();
     drawing = true;
+    activePointer = e.pointerId;
     draft.points.push(worldFromEvent(e));
     onStatus('Continuez la boucle et revenez au point de départ…');
     requestRender();
   }
 
   function onPointerMove(e) {
-    if (!drawing) return;
+    if (!drawing || e.pointerId !== activePointer) return;
     const p = worldFromEvent(e);
     const last = draft.points[draft.points.length - 1];
     if (Math.hypot(p.x - last.x, p.y - last.y) < 4) return;
@@ -53,9 +54,10 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
     requestRender();
   }
 
-  function onPointerUp() {
-    if (!drawing) return;
+  function onPointerUp(e) {
+    if (!drawing || e.pointerId !== activePointer) return;
     drawing = false;
+    activePointer = -1;
     finishStroke();
   }
 
@@ -114,14 +116,15 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
     requestRender();
   }
 
-  function onPointerCancel() {
+  function onPointerCancel(e) {
+    if (e.pointerId !== activePointer) return;
     drawing = false;
+    activePointer = -1;
     reset();
     requestRender();
   }
 
   function enter() {
-    active = true;
     reset();
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
@@ -131,8 +134,8 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
   }
 
   function exit() {
-    active = false;
     drawing = false;
+    activePointer = -1;
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointermove', onPointerMove);
     canvas.removeEventListener('pointerup', onPointerUp);
@@ -150,7 +153,6 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
     enter,
     exit,
     takeCenterline,
-    isActive: () => active,
     worldBounds: () => ({ minX: 0, minY: 0, maxX: WORLD.w, maxY: WORLD.h }),
   };
 }

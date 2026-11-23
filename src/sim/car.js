@@ -24,7 +24,6 @@ export function createCar(pose) {
     progressDist: 0,
     stallTimer: 0,
     stallRefDist: 0,
-    fitness: 0,
   };
 }
 

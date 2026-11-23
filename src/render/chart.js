@@ -97,7 +97,11 @@ export function createChart(canvas) {
       ctx.stroke();
     }
 
+    // Dashed mean vs solid best: the two series differ by pattern, not
+    // only by hue (matches the caption's legend).
+    ctx.setLineDash([5 * dpr, 4 * dpr]);
     polyline('mean', 'rgba(154, 168, 184, 0.8)', 1.4);
+    ctx.setLineDash([]);
     polyline('best', '#ffd166', 2);
 
     // X axis label.

@@ -22,35 +22,41 @@
       </header>
 
       <div class="layout">
-        <section class="stage" aria-label="Piste d'entraînement">
-          <canvas id="scene"></canvas>
+        <section class="stage" aria-label="Piste d’entraînement">
+          <canvas
+            id="scene"
+            role="img"
+            aria-label="Vue de la piste : les voitures de la promotion en cours d’entraînement"
+          ></canvas>
           <div id="overlay" class="overlay" hidden>
             <p id="overlay-text"></p>
             <button id="overlay-action" type="button" hidden></button>
           </div>
-          <p id="status-pill" class="status-pill" role="status" hidden></p>
+          <p id="status-pill" class="status-pill" role="status"></p>
           <button id="editor-accept" type="button" class="editor-accept primary" hidden>
             ✓ Valider ce circuit
           </button>
         </section>
 
         <section class="dashboard" aria-label="Tableau de bord">
+          <!-- Plain spans, not <output>: these change many times per second
+               and must not be implicit live regions. -->
           <dl class="scoreboard">
             <div class="stat">
               <dt>Promotion <span class="sub">génération</span></dt>
-              <dd><output id="stat-gen">1</output></dd>
+              <dd><span id="stat-gen">1</span></dd>
             </div>
             <div class="stat">
               <dt>En piste <span class="sub">voitures</span></dt>
-              <dd><output id="stat-alive">0</output></dd>
+              <dd><span id="stat-alive">0</span></dd>
             </div>
             <div class="stat">
               <dt>Meilleur trajet <span class="sub">cette promotion</span></dt>
-              <dd><output id="stat-best">0 m</output></dd>
+              <dd><span id="stat-best">0 m</span></dd>
             </div>
             <div class="stat">
-              <dt>Record de l'école <span class="sub">toutes promotions</span></dt>
-              <dd><output id="stat-record">0 m</output></dd>
+              <dt>Record de l’école <span class="sub">toutes promotions</span></dt>
+              <dd><span id="stat-record">0 m</span></dd>
             </div>
           </dl>
 
@@ -60,6 +66,9 @@
               <button id="btn-restart" type="button">↻ Nouvelle session</button>
               <button id="btn-champion" type="button">🏆 Voir le champion</button>
             </div>
+            <p id="champion-hint" class="sub" hidden>
+              Le champion n’existe que sur les circuits prédéfinis.
+            </p>
 
             <fieldset class="speed">
               <legend>Vitesse des leçons</legend>
@@ -99,12 +108,12 @@
       <section class="panels" aria-label="Panneau pédagogique">
         <div class="panel">
           <h2>Dans la tête du premier de la classe</h2>
-          <p class="sub">Le réseau de neurones du meilleur élève, en direct : à gauche ce qu'il perçoit, à droite ce qu'il décide.</p>
+          <p class="sub">Le réseau de neurones du meilleur élève, en direct : à gauche ce qu’il perçoit, à droite ce qu’il décide.</p>
           <canvas id="netviz" role="img" aria-label="Schéma animé du réseau de neurones du meilleur élève"></canvas>
         </div>
         <div class="panel">
-          <h2>Les progrès de l'école</h2>
-          <p class="sub">Distance parcourue par promotion : le meilleur élève et la moyenne de la classe.</p>
+          <h2>Les progrès de l’école</h2>
+          <p class="sub">Distance parcourue par promotion : le meilleur élève (trait jaune continu) et la moyenne de la classe (trait gris pointillé).</p>
           <canvas id="chart" role="img" aria-label="Courbe de progression : meilleur trajet et moyenne par génération"></canvas>
         </div>
         <div class="panel panel-text">
@@ -116,7 +125,7 @@
             À la fin de chaque promotion, les meilleurs élèves ont des
             « enfants » : copies mélangées de leurs réseaux, avec quelques
             mutations aléatoires. Les maladroits sortent de la route,
-            les bons transmettent leur conduite — c'est la neuroévolution.
+            les bons transmettent leur conduite — c’est la neuroévolution.
           </p>
         </div>
       </section>

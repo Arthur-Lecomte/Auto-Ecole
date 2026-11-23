@@ -77,11 +77,15 @@ function trainOne(preset, seed) {
     }
     // After evolve(), genomes[0] is the unmutated elite of the generation
     // that just ended.
-    if (h.best >= 2 * track.lapLength) {
-      const elite = sim.genomes[0];
-      const score = championScore(track, elite);
+    // Cheap filter before the expensive solo suite: one clean lap within
+    // the generation's 20s is already championship material.
+    if (h.best >= 1.1 * track.lapLength) {
+      // Round BEFORE qualifying: the suite must certify exactly the
+      // artifact that ships in champions.js, not its full-precision twin.
+      const shipped = sim.genomes[0].map((w) => Number(w.toFixed(5)));
+      const score = championScore(track, shipped);
       if (score > 0 && (!best || score > best.score)) {
-        best = { gens: gen, score, weights: elite.map((w) => Number(w.toFixed(5))) };
+        best = { gens: gen, score, weights: shipped };
       }
     }
   }

@@ -31,6 +31,7 @@ const els = {
   play: $('btn-play'),
   restart: $('btn-restart'),
   champion: $('btn-champion'),
+  championHint: $('champion-hint'),
   draw: $('btn-draw'),
   pop: $('in-pop'),
   popOut: $('out-pop'),
@@ -90,7 +91,12 @@ function loadCustoms() {
 }
 
 function saveCustoms() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.customs));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.customs));
+  } catch {
+    // Quota full or site data blocked: the track still works this visit.
+    showPill('Sauvegarde locale impossible — le circuit reste jouable pour cette visite.');
+  }
 }
 
 /* ---------- Render-on-demand loop ----------
@@ -129,11 +135,14 @@ function advanceSim(now) {
   if (!lastTime) lastTime = now;
   const elapsed = Math.min((now - lastTime) / 1000, 0.1);
   lastTime = now;
-  if (state.speed === 'max') {
+  // Max is a wall-clock budget for training; for the one-car champion
+  // replay it would be a teleport, so cap it to a watchable multiplier.
+  const speed = state.mode === 'champion' && state.speed === 'max' ? 8 : state.speed;
+  if (speed === 'max') {
     const budget = performance.now() + 12;
     while (performance.now() < budget) stepOnce();
   } else {
-    simAcc += elapsed * state.speed;
+    simAcc += elapsed * speed;
     let n = 0;
     while (simAcc >= SIM.dt && n < 240) {
       simAcc -= SIM.dt;
@@ -179,6 +188,12 @@ function drawNet(car, genome) {
 function render() {
   if (state.mode === 'editor') {
     renderer.drawDraft(editor.draft);
+    // A resize wipes the panel canvases; keep them drawn even here.
+    drawNet(state.sim.bestCar(), state.sim.genomes[0]);
+    if (chartDirty) {
+      chart.draw(state.sim.history, state.track.lapLength);
+      chartDirty = false;
+    }
     return;
   }
   if (state.mode === 'champion') {
@@ -211,18 +226,20 @@ function render() {
 
 /* ---------- Mode & controls ---------- */
 
+// The pill keeps its role=status node in the tree (see .status-pill:empty)
+// so screen readers reliably announce the first message too.
 function showPill(msg) {
   els.pill.textContent = msg;
-  els.pill.hidden = false;
 }
 
 function hidePill() {
-  els.pill.hidden = true;
+  els.pill.textContent = '';
 }
 
 function setRunning(run) {
   if (run && !state.running) lastTime = 0;
   state.running = run;
+  if (run) els.overlay.hidden = true; // whatever started the sim dismisses the start gate
   els.play.textContent = run ? '⏸ Pause' : '▶ Reprendre';
   if (run) {
     state.userStarted = true;
@@ -237,6 +254,7 @@ function updateChampionButton() {
     els.champion.disabled = false;
     els.champion.textContent = '🏫 Retour à l’école';
     els.champion.title = '';
+    els.championHint.hidden = true;
     return;
   }
   const has = Boolean(CHAMPIONS[state.trackDef.id]);
@@ -244,7 +262,10 @@ function updateChampionButton() {
   els.champion.textContent = '🏆 Voir le champion';
   els.champion.title = has
     ? 'Faire rouler un réseau déjà entraîné (embarqué dans la démo)'
-    : 'Le champion n’existe que sur les circuits prédéfinis';
+    : '';
+  // Visible text, not a tooltip: a disabled button is unfocusable, so the
+  // explanation must not live only in `title`.
+  els.championHint.hidden = has;
 }
 
 function selectTrack(def) {
@@ -287,9 +308,12 @@ function enterEditor() {
   state.wasRunningBeforeEditor = state.running;
   state.mode = 'editor';
   state.running = false;
+  els.overlay.hidden = true; // the reduced-motion start gate must not cover the editor
+  els.play.textContent = '▶ Reprendre';
   state.sim.spawn(); // mid-generation state would be stale when we return
   editor.enter();
   renderer.setWorldView(editor.worldBounds());
+  sceneCanvas.setAttribute('aria-label', 'Zone de dessin : tracez votre circuit à main levée');
   els.draw.textContent = '✖ Annuler le tracé';
   els.play.disabled = true;
   els.restart.disabled = true;
@@ -301,6 +325,10 @@ function exitEditor(restore) {
   editor.exit();
   els.accept.hidden = true;
   hidePill();
+  sceneCanvas.setAttribute(
+    'aria-label',
+    'Vue de la piste : les voitures de la promotion en cours d’entraînement',
+  );
   els.draw.textContent = '✏️ Tracer mon circuit';
   els.play.disabled = false;
   els.restart.disabled = false;
@@ -349,6 +377,7 @@ function renderTrackList() {
     select.type = 'button';
     select.className = 'select';
     select.dataset.id = def.id;
+    select.setAttribute('aria-pressed', String(def.id === state.trackDef.id));
     const name = document.createElement('span');
     name.textContent = def.name;
     const diff = document.createElement('span');
@@ -373,16 +402,24 @@ function renderTrackList() {
 els.trackList.addEventListener('click', (e) => {
   const btn = e.target.closest('button');
   if (!btn) return;
+  // The list is rebuilt below, removing the focused button from the DOM;
+  // keyboard users must not be dropped back to <body>.
+  const refocus = (id) =>
+    (els.trackList.querySelector(`button[data-id="${id}"]`) ?? els.trackList.querySelector('button'))?.focus();
   if (btn.dataset.delete) {
     const id = btn.dataset.delete;
     state.customs = state.customs.filter((t) => t.id !== id);
     saveCustoms();
     if (state.trackDef.id === id) selectTrack(PRESETS[0]);
     else renderTrackList();
+    refocus(state.trackDef.id);
     return;
   }
   const def = [...PRESETS, ...state.customs].find((t) => t.id === btn.dataset.id);
-  if (def && def.id !== state.trackDef.id) selectTrack(def);
+  if (def && def.id !== state.trackDef.id) {
+    selectTrack(def);
+    refocus(def.id);
+  }
 });
 
 /* ---------- Wiring ---------- */

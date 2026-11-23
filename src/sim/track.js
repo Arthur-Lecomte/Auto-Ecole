@@ -169,6 +169,16 @@ export function buildTrack({ id, name, points, width, smoothIterations = 2 }) {
   const segStamp = new Int32Array(walls.length);
   let stamp = 0;
 
+  // segStamp is int32: keep the epoch in range (a long max-speed session
+  // can push a plain counter past 2^31, silently disabling the dedup).
+  function bumpStamp() {
+    stamp = (stamp + 1) | 0;
+    if (stamp === 0) {
+      segStamp.fill(0);
+      stamp = 1;
+    }
+  }
+
   function raySegment(x, y, dx, dy, w) {
     const rx = w.bx - w.ax;
     const ry = w.by - w.ay;
@@ -190,7 +200,7 @@ export function buildTrack({ id, name, points, width, smoothIterations = 2 }) {
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
     let minT = maxDist;
-    stamp++;
+    bumpStamp();
     let gx = Math.floor((x - minX) / CELL_SIZE);
     let gy = Math.floor((y - minY) / CELL_SIZE);
     const stepX = dx > 0 ? 1 : -1;
@@ -233,7 +243,7 @@ export function buildTrack({ id, name, points, width, smoothIterations = 2 }) {
     const gy0 = Math.max(0, Math.floor((y - r - minY) / CELL_SIZE));
     const gy1 = Math.min(rows - 1, Math.floor((y + r - minY) / CELL_SIZE));
     const r2 = r * r;
-    stamp++;
+    bumpStamp();
     for (let gy = gy0; gy <= gy1; gy++) {
       for (let gx = gx0; gx <= gx1; gx++) {
         const cell = cells[gy * cols + gx];
