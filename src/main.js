@@ -343,6 +343,14 @@ function exitEditor(restore) {
 
 function acceptDraft() {
   const points = editor.takeCenterline();
+  // Dry-run: never save or select a definition that cannot actually be
+  // built into a track — a silent dead end would be worse than a message.
+  try {
+    buildTrack({ points, width: CUSTOM_WIDTH, smoothIterations: 0 });
+  } catch {
+    showPill('Ce tracé ne donne pas un circuit utilisable. Redessinez.');
+    return;
+  }
   const n =
     1 +
     state.customs.reduce((max, t) => {

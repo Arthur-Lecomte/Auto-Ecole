@@ -67,13 +67,24 @@ function pointSegDist2(px, py, ax, ay, bx, by) {
   return dx * dx + dy * dy;
 }
 
+// Strict segment-segment crossing (shared endpoints and collinear touches
+// excluded — those are the pinch check's business).
+function segsCross(a, b, c, d) {
+  const o = (p, q, r) => Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+  const o1 = o(a, b, c);
+  const o2 = o(a, b, d);
+  const o3 = o(c, d, a);
+  const o4 = o(c, d, b);
+  return o1 !== o2 && o3 !== o4 && o1 !== 0 && o2 !== 0 && o3 !== 0 && o4 !== 0;
+}
+
 // Checks a resampled centerline is drivable for a given road width:
-// no curve tighter than the road half-width, and no two distinct parts of
-// the loop closer than the road width (pinch). Returns {ok} or
-// {ok:false, reason:'curve'|'pinch', index}.
+// no curve tighter than the road half-width, no self-crossing, and no two
+// distinct parts of the loop closer than the road width (pinch). Returns
+// {ok} or {ok:false, reason:'curve'|'cross'|'pinch', index}.
 export function validateCenterline(samples, spacing, width) {
   const n = samples.length;
-  const minRadius = width * 0.62;
+  const minRadius = width * 0.58;
   for (let i = 0; i < n; i++) {
     const p0 = samples[(i - 1 + n) % n];
     const p1 = samples[i];
@@ -84,6 +95,19 @@ export function validateCenterline(samples, spacing, width) {
     if (turn > Math.PI) turn = 2 * Math.PI - turn;
     if (turn > 1e-4 && spacing / turn < minRadius) {
       return { ok: false, reason: 'curve', index: i };
+    }
+  }
+  // A loop that crosses itself is never a drivable circuit, however smooth
+  // it is. The pinch guard window does NOT apply here: a crossing right
+  // next to the start/finish seam is just as invalid.
+  for (let i = 0; i < n; i++) {
+    const a = samples[i];
+    const b = samples[(i + 1) % n];
+    for (let j = i + 3; j < n; j++) {
+      if (j >= n + i - 2) continue; // circularly adjacent across the seam
+      const c = samples[j];
+      const d = samples[(j + 1) % n];
+      if (segsCross(a, b, c, d)) return { ok: false, reason: 'cross', index: i };
     }
   }
   const guard = Math.ceil((width * 1.7) / spacing);

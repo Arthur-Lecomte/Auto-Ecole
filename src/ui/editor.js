@@ -6,7 +6,7 @@
 import { chaikinClosed, resampleClosed, validateCenterline, SAMPLE_SPACING } from '../sim/track.js';
 import { WORLD } from '../tracks/presets.js';
 
-export const CUSTOM_WIDTH = 58;
+export const CUSTOM_WIDTH = 46;
 const MIN_PERIMETER = 500; // world px
 const MAX_CLOSE_GAP_RATIO = 0.3; // stroke must end near its start
 
@@ -70,22 +70,31 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
   }
 
   // A freehand stroke rarely meets its own start tangentially: the hand
-  // overshoots or hooks inward. Cut the tail at the point of the final
-  // stretch that comes closest to the start, so the closing seam is as
-  // short and straight as possible.
-  function trimTail(pts) {
-    const head = pts[0];
-    const from = Math.floor(pts.length * 0.6);
-    let bestI = pts.length - 1;
-    let bestD = Infinity;
-    for (let i = from; i < pts.length; i++) {
-      const d = Math.hypot(pts[i].x - head.x, pts[i].y - head.y);
-      if (d < bestD) {
-        bestD = d;
-        bestI = i;
+  // leads in, overshoots, or crosses its own line to close the loop
+  // ("balloon on a string"). Find the closest approach between an early
+  // point and a late point and keep only the arc between them — the
+  // lead-in and the overshoot are both discarded, and the loop closes at
+  // the natural crossing point.
+  function trimToLoop(pts) {
+    const n = pts.length;
+    const headEnd = Math.floor(n * 0.4);
+    const tailStart = Math.floor(n * 0.6);
+    let bi = 0;
+    let bj = n - 1;
+    let bd = Infinity;
+    for (let i = 0; i < headEnd; i++) {
+      for (let j = tailStart; j < n; j++) {
+        const dx = pts[i].x - pts[j].x;
+        const dy = pts[i].y - pts[j].y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bd) {
+          bd = d2;
+          bi = i;
+          bj = j;
+        }
       }
     }
-    return pts.slice(0, bestI + 1);
+    return pts.slice(bi, bj + 1);
   }
 
   // One local smoothing pass: pull the samples around `center` toward
@@ -103,7 +112,7 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
   }
 
   function finishStroke() {
-    const pts = trimTail(draft.points);
+    const pts = trimToLoop(draft.points);
     const perimeter = perimeterOf(pts);
     if (pts.length < 12 || perimeter < MIN_PERIMETER) {
       onStatus('Tracé trop court : dessinez une grande boucle d’un seul geste.');
@@ -130,8 +139,10 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
     // resampling shifts the points. Validation always runs on rounded
     // coordinates — the stored track must pass the exact same check when
     // reloaded from localStorage.
-    const MARGIN = 1.1;
-    let samples = resampleClosed(chaikinClosed(pts, 2), SAMPLE_SPACING);
+    const MARGIN = 1.06;
+    // One Chaikin pass only: enough to tame pointer jitter, light enough
+    // to keep deliberate tight turns as drawn.
+    let samples = resampleClosed(chaikinClosed(pts, 1), SAMPLE_SPACING);
     let rounded = null;
     let v = null;
     for (let round = 0; round < 200; round++) {
@@ -158,11 +169,12 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
     if (!v.ok) {
       draft.badIndex = v.index;
       draft.valid = false;
-      onStatus(
-        v.reason === 'curve'
-          ? 'Virage impossible à adoucir pour la largeur de la route (point rouge). Redessinez.'
-          : 'La piste se pince au point rouge : espacez les portions. Redessinez.',
-      );
+      const messages = {
+        curve: 'Virage impossible à adoucir pour la largeur de la route (point rouge). Redessinez.',
+        cross: 'La piste se croise au point rouge : redessinez sans croisement.',
+        pinch: 'La piste se pince au point rouge : espacez les portions. Redessinez.',
+      };
+      onStatus(messages[v.reason]);
     } else {
       draft.badIndex = -1;
       draft.valid = true;
