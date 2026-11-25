@@ -53,5 +53,5 @@ JavaScript à l'autre.
 
 ## Licences des assets
 
-Aucun asset externe : tout est dessiné au canvas, police système,
-icônes en emoji système. Code sous la licence du dépôt.
+Aucun asset externe : tout est dessiné au canvas, police système.
+Code sous la licence du dépôt.
