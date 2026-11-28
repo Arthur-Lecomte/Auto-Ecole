@@ -16,7 +16,6 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
     closed: false,
     badIndex: -1,
     width: CUSTOM_WIDTH,
-    valid: false,
   };
   let drawing = false;
   let activePointer = -1; // a second finger must not corrupt the stroke
@@ -25,7 +24,6 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
     draft.points = [];
     draft.closed = false;
     draft.badIndex = -1;
-    draft.valid = false;
     onDraftChange(false);
   }
 
@@ -168,7 +166,6 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
     draft.closed = true;
     if (!v.ok) {
       draft.badIndex = v.index;
-      draft.valid = false;
       const messages = {
         curve: 'Virage impossible à adoucir pour la largeur de la route (point rouge). Redessinez.',
         cross: 'La piste se croise au point rouge : redessinez sans croisement.',
@@ -177,10 +174,9 @@ export function createEditor({ canvas, worldFromEvent, requestRender, onStatus, 
       onStatus(messages[v.reason]);
     } else {
       draft.badIndex = -1;
-      draft.valid = true;
       onStatus('Beau circuit ! Validez-le, ou redessinez par-dessus.');
     }
-    onDraftChange(draft.valid);
+    onDraftChange(v.ok);
     requestRender();
   }
 

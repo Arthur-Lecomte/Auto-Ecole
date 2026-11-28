@@ -47,9 +47,7 @@ export function createRenderer(canvas) {
     return true;
   }
 
-  function computeView() {
-    if (!track) return;
-    const b = track.bounds;
+  function fitView(b) {
     const worldW = b.maxX - b.minX;
     const worldH = b.maxY - b.minY;
     const scale = Math.min(canvas.width / worldW, canvas.height / worldH) * 0.97;
@@ -58,6 +56,10 @@ export function createRenderer(canvas) {
       ox: (canvas.width - worldW * scale) / 2 - b.minX * scale,
       oy: (canvas.height - worldH * scale) / 2 - b.minY * scale,
     };
+  }
+
+  function computeView() {
+    if (track) fitView(track.bounds);
   }
 
   function setTrack(t) {
@@ -228,14 +230,7 @@ export function createRenderer(canvas) {
   // Editor needs a view even with no track yet: frame the given world box.
   function setWorldView(bounds) {
     track = null;
-    const worldW = bounds.maxX - bounds.minX;
-    const worldH = bounds.maxY - bounds.minY;
-    const scale = Math.min(canvas.width / worldW, canvas.height / worldH) * 0.97;
-    view = {
-      scale,
-      ox: (canvas.width - worldW * scale) / 2 - bounds.minX * scale,
-      oy: (canvas.height - worldH * scale) / 2 - bounds.minY * scale,
-    };
+    fitView(bounds);
     const c = trackLayer.getContext('2d');
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, trackLayer.width, trackLayer.height);

@@ -16,8 +16,6 @@ export const SIM = {
   layers: [6, 8, 2], // 5 rays + speed -> hidden -> [steer, throttle]
 };
 
-export const DEFAULTS = { popSize: 60, sigma: 0.18 };
-
 // What the car perceives: normalized sensor distances + normalized speed.
 // Also used by the UI to feed the live network visualization.
 export function senseInputs(track, car, out = new Array(SIM.layers[0])) {
@@ -64,7 +62,7 @@ export function freshGenome(rng) {
 }
 
 export class Simulation {
-  constructor({ track, popSize = DEFAULTS.popSize, sigma = DEFAULTS.sigma, rng }) {
+  constructor({ track, popSize, sigma, rng }) {
     this.track = track;
     this.popSize = popSize;
     this.sigma = sigma;
@@ -112,11 +110,6 @@ export class Simulation {
       }
     }
     return best;
-  }
-
-  bestGenome() {
-    const i = this.cars.indexOf(this.bestCar());
-    return i >= 0 ? this.genomes[i] : this.genomes[0];
   }
 
   // One fixed timestep for the whole population. Returns true when a
