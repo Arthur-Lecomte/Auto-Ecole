@@ -128,7 +128,7 @@ export function validateCenterline(samples, spacing, width) {
   return { ok: true };
 }
 
-export function buildTrack({ id, name, points, width, smoothIterations = 2 }) {
+export function buildTrack({ points, width, smoothIterations = 2 }) {
   const smoothed = chaikinClosed(points, smoothIterations);
   const samples = resampleClosed(smoothed, SAMPLE_SPACING);
   const n = samples.length;
@@ -321,14 +321,10 @@ export function buildTrack({ id, name, points, width, smoothIterations = 2 }) {
   };
 
   return {
-    id,
-    name,
-    width,
     samples,
     inner,
     outer,
     n,
-    spacing: SAMPLE_SPACING,
     lapLength: n * SAMPLE_SPACING,
     bounds: { minX, minY, maxX, maxY },
     startPose,

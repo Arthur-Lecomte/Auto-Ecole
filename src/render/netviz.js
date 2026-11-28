@@ -38,12 +38,12 @@ export function createNetviz(canvas) {
     return { x, y };
   }
 
-  function actColor(a, alpha = 1) {
+  function actColor(a) {
     // Positive: cyan; negative: warm orange; brightness tracks |a|.
     const m = Math.min(1, Math.abs(a));
     return a >= 0
-      ? `rgba(82, 214, 251, ${(0.15 + 0.85 * m) * alpha})`
-      : `rgba(255, 159, 67, ${(0.15 + 0.85 * m) * alpha})`;
+      ? `rgba(82, 214, 251, ${0.15 + 0.85 * m})`
+      : `rgba(255, 159, 67, ${0.15 + 0.85 * m})`;
   }
 
   // trace: per-layer activation arrays (from forwardTrace); genome: flat
